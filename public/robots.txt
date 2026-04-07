@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://hiit-timer.bigya.com.np/sitemap.xml
