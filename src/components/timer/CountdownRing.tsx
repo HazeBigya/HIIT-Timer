@@ -6,7 +6,7 @@ import type { TimerPhaseKey, TimerState } from '../../types'
 import { formatSecondsToClock } from '../../utils/timeHelpers'
 
 interface CountdownRingProps
-  extends Pick<TimerState, 'currentPhase' | 'timeLeft' | 'currentRound' | 'currentSet' | 'totalTimeRemaining' | 'isRunning'> {
+  extends Pick<TimerState, 'currentPhase' | 'timeLeft' | 'currentRound' | 'currentSet' | 'isRunning'> {
   phaseKey: TimerPhaseKey
   phaseDuration: number
   rounds: number
@@ -21,11 +21,10 @@ function CountdownRing({
   currentSet,
   rounds,
   totalSets,
-  totalTimeRemaining,
   phaseDuration,
   isRunning,
 }: CountdownRingProps) {
-  const theme = PHASE_THEMES[phaseKey] ?? PHASE_THEMES[PHASES.WORK]
+  const theme = PHASE_THEMES[phaseKey] ?? PHASE_THEMES[PHASES.EXERCISE]
   const previousSecondRef = useRef<number>(timeLeft)
   const [countdownCue, setCountdownCue] = useState<number | null>(null)
 
@@ -82,7 +81,8 @@ function CountdownRing({
     return () => window.clearTimeout(timeoutId)
   }, [countdownCue])
 
-  const phaseTitle = phaseKey === PHASES.FINISHED ? 'FINISHED' : `${currentPhase.toUpperCase()}!`
+  const phaseTitle = phaseKey === PHASES.FINISHED ? 'FINISHED' : currentPhase.toUpperCase()
+  const phaseMeta = `Set ${Math.min(Math.max(currentSet, 1), totalSets)}/${totalSets} • Round ${Math.min(Math.max(currentRound, 1), rounds)}/${rounds}`
 
   return (
     <div
@@ -93,7 +93,6 @@ function CountdownRing({
         '--phase-accent': theme.accent,
       } as CSSProperties}
     >
-      <div className="phase-chip">{theme.chip}</div>
 
       <Motion.div
         className="timer-halo"
@@ -136,11 +135,7 @@ function CountdownRing({
       <div className="timer-face">
         <span className="timer-label timer-phase-title">{phaseTitle}</span>
         <strong className="timer-time timer-time--xl">{formatSecondsToClock(timeLeft)}</strong>
-        <span className="timer-set">Round {currentRound}/{rounds}</span>
-        <span className="timer-set timer-set--secondary">Set {currentSet}/{totalSets}</span>
-        <span className="timer-total-remaining">
-          Remaining {formatSecondsToClock(totalTimeRemaining)}
-        </span>
+        <span className="timer-set">{phaseMeta}</span>
       </div>
 
       <AnimatePresence mode="wait">

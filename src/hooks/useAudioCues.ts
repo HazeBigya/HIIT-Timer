@@ -5,8 +5,14 @@ import dingDingSound from '../assets/ding_ding.mp3'
 interface AudioCueHookResult {
   isMuted: boolean
   toggleMute: () => void
+  unlockAudio: () => void
   playDingDing: () => void
   playBeeper: () => void
+}
+
+interface AudioBank {
+  dingAudio: HTMLAudioElement | null
+  beeperAudio: HTMLAudioElement | null
 }
 
 function createAudio(source: string, volume: number): HTMLAudioElement | null {
@@ -22,6 +28,21 @@ function createAudio(source: string, volume: number): HTMLAudioElement | null {
   return audio
 }
 
+let sharedAudioBank: AudioBank | null = null
+
+function getAudioBank(): AudioBank {
+  if (sharedAudioBank) {
+    return sharedAudioBank
+  }
+
+  sharedAudioBank = {
+    dingAudio: createAudio(dingDingSound, 0.9),
+    beeperAudio: createAudio(countdownBeeperSound, 0.8),
+  }
+
+  return sharedAudioBank
+}
+
 function useAudioCues(): AudioCueHookResult {
   const [isMuted, setIsMuted] = useState<boolean>(() => {
     if (typeof window === 'undefined') {
@@ -31,8 +52,7 @@ function useAudioCues(): AudioCueHookResult {
     return window.localStorage.getItem('hiit-timer-muted') === '1'
   })
 
-  const dingAudio = useMemo(() => createAudio(dingDingSound, 0.9), [])
-  const beeperAudio = useMemo(() => createAudio(countdownBeeperSound, 0.8), [])
+  const { dingAudio, beeperAudio } = useMemo(() => getAudioBank(), [])
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
@@ -48,18 +68,36 @@ function useAudioCues(): AudioCueHookResult {
     }
   }, [beeperAudio, dingAudio, isMuted])
 
-  useEffect(() => {
-    return () => {
-      for (const audio of [dingAudio, beeperAudio]) {
-        if (!audio) {
-          continue
-        }
+  const unlockAudio = useCallback(() => {
+    for (const source of [dingDingSound, countdownBeeperSound]) {
+      const tempAudio = createAudio(source, 0)
 
-        audio.pause()
-        audio.currentTime = 0
+      if (!tempAudio) {
+        continue
       }
+
+      tempAudio.muted = true
+      tempAudio.currentTime = 0
+
+      void tempAudio.play()
+        .then(() => {
+          tempAudio.pause()
+          tempAudio.currentTime = 0
+        })
+        .catch(() => {
+          // Ignore browsers that still refuse playback here.
+        })
     }
-  }, [beeperAudio, dingAudio])
+
+    for (const audio of [dingAudio, beeperAudio]) {
+      if (!audio) {
+        continue
+      }
+
+      audio.load()
+      audio.muted = isMuted
+    }
+  }, [beeperAudio, dingAudio, isMuted])
 
   const playAudio = useCallback(
     (audio: HTMLAudioElement | null) => {
@@ -70,7 +108,7 @@ function useAudioCues(): AudioCueHookResult {
       audio.pause()
       audio.currentTime = 0
       void audio.play().catch(() => {
-        // Ignore autoplay blocking until the user interacts with the page.
+        // Ignore autoplay blocking until the user taps Start Workout.
       })
     },
     [isMuted],
@@ -91,6 +129,7 @@ function useAudioCues(): AudioCueHookResult {
   return {
     isMuted,
     toggleMute,
+    unlockAudio,
     playDingDing,
     playBeeper,
   }

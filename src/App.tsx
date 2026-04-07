@@ -1,6 +1,5 @@
 import { AnimatePresence, motion as Motion } from 'framer-motion'
 import { useCallback, useState } from 'react'
-import styles from './App.module.scss'
 import Header from './components/layout/Header'
 import SettingsPanel from './components/settings/SettingsPanel'
 import TimerView from './components/timer/TimerView'
@@ -52,12 +51,8 @@ function App() {
   }, [])
 
   return (
-    <main className={styles.app}>
-      <div className={styles.app__ambient} aria-hidden="true" />
-      <div className={`${styles.app__orb} ${styles['app__orb--primary']}`} aria-hidden="true" />
-      <div className={`${styles.app__orb} ${styles['app__orb--secondary']}`} aria-hidden="true" />
-
-      <div className={styles.app__container}>
+    <main className="min-h-screen bg-gradient-to-br from-slate-900 via-slate-900 to-slate-950 text-white">
+      <div className="mx-auto flex min-h-screen max-w-6xl flex-col gap-4 px-4 py-6 sm:px-6 sm:py-8 lg:px-8">
         <Header
           session={session}
           authLoading={authLoading}
@@ -68,14 +63,14 @@ function App() {
 
         <Motion.section
           layout
-          className={styles.app__surface}
+          className="overflow-hidden rounded-[32px] border border-white/10 bg-white/5 shadow-[0_24px_80px_rgba(15,23,42,0.35)] backdrop-blur-md"
           transition={{ layout: settingsTransition }}
         >
           <AnimatePresence mode="wait" initial={false}>
             {view === APP_VIEWS.SETTINGS ? (
               <Motion.div
                 key="settings-view"
-                className={styles.app__view}
+                className="w-full"
                 initial={{ opacity: 0, y: 42 }}
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 24 }}
@@ -92,7 +87,7 @@ function App() {
             ) : (
               <Motion.div
                 key="timer-view"
-                className={styles.app__view}
+                className="w-full"
                 initial={{ opacity: 0, y: 18, scale: 0.985 }}
                 animate={{ opacity: 1, y: 0, scale: 1 }}
                 exit={{ opacity: 0, y: -14, scale: 0.985 }}

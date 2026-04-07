@@ -1,14 +1,16 @@
 export type AppView = 'settings' | 'timer'
 
-export type TimerPhase = 'Work' | 'Rest' | 'Set Rest' | 'Finished'
-export type TimerPhaseKey = 'work' | 'rest' | 'set-rest' | 'finished'
+export type TimerPhase = 'Warmup' | 'Exercise' | 'Rest' | 'Set Rest' | 'Cooldown' | 'Finished'
+export type TimerPhaseKey = 'warmup' | 'exercise' | 'rest' | 'set-rest' | 'cooldown' | 'finished'
 
 export interface WorkoutConfig {
-  workTime: number
+  warmupTime: number
+  exerciseTime: number
   restTime: number
   rounds: number
   setRest: number
   totalSets: number
+  cooldownTime: number
 }
 
 export interface TimerState {
@@ -40,11 +42,18 @@ export interface Database {
     Tables: {
       routines: {
         Row: Routine
-        Insert: Omit<Routine, 'id'> & { id?: string }
+        Insert: Omit<Routine, 'id' | 'created_at'> & {
+          id?: string
+          created_at?: string | null
+        }
         Update: Partial<Routine>
         Relationships: []
       }
     }
+    Views: Record<string, never>
+    Functions: Record<string, never>
+    Enums: Record<string, never>
+    CompositeTypes: Record<string, never>
   }
 }
 

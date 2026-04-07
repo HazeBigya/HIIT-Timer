@@ -16,8 +16,12 @@ export function clampNumber(value: unknown, min: number, fallback: number): numb
 }
 
 type WorkoutConfigInput = Partial<WorkoutConfig> & {
+  warmup?: unknown
+  workTime?: unknown
   work?: unknown
   workout?: unknown
+  exercise?: unknown
+  exerciseTime?: unknown
   rest?: unknown
   roundsPerSet?: unknown
   cooldown?: unknown
@@ -25,10 +29,15 @@ type WorkoutConfigInput = Partial<WorkoutConfig> & {
 
 export function normalizeWorkoutConfig(config: WorkoutConfigInput = {}): WorkoutConfig {
   return {
-    workTime: clampNumber(
-      config.workTime ?? config.work ?? config.workout,
+    warmupTime: clampNumber(
+      config.warmupTime ?? config.warmup,
+      0,
+      DEFAULT_WORKOUT_CONFIG.warmupTime,
+    ),
+    exerciseTime: clampNumber(
+      config.exerciseTime ?? config.workTime ?? config.work ?? config.workout ?? config.exercise,
       1,
-      DEFAULT_WORKOUT_CONFIG.workTime,
+      DEFAULT_WORKOUT_CONFIG.exerciseTime,
     ),
     restTime: clampNumber(
       config.restTime ?? config.rest,
@@ -41,14 +50,15 @@ export function normalizeWorkoutConfig(config: WorkoutConfigInput = {}): Workout
       DEFAULT_WORKOUT_CONFIG.rounds,
     ),
     setRest: clampNumber(
-      config.setRest ?? config.cooldown,
+      config.setRest,
       0,
       DEFAULT_WORKOUT_CONFIG.setRest,
     ),
-    totalSets: clampNumber(
-      config.totalSets,
-      1,
-      DEFAULT_WORKOUT_CONFIG.totalSets,
+    totalSets: clampNumber(config.totalSets, 1, DEFAULT_WORKOUT_CONFIG.totalSets),
+    cooldownTime: clampNumber(
+      config.cooldownTime ?? config.cooldown,
+      0,
+      DEFAULT_WORKOUT_CONFIG.cooldownTime,
     ),
   }
 }
@@ -62,17 +72,49 @@ export function formatSecondsToClock(totalSeconds: number): string {
 }
 
 export function calculateWorkoutDuration(config: Partial<WorkoutConfig>): number {
-  const { workTime, restTime, rounds, setRest, totalSets } = normalizeWorkoutConfig(config)
+  const {
+    warmupTime,
+    exerciseTime,
+    restTime,
+    rounds,
+    setRest,
+    totalSets,
+    cooldownTime,
+  } = normalizeWorkoutConfig(config)
 
   return Math.max(
     0,
-    ((workTime + restTime) * rounds - restTime + setRest) * totalSets - setRest,
+    warmupTime + (((exerciseTime + restTime) * rounds - restTime + setRest) * totalSets - setRest) + cooldownTime,
   )
 }
 
+export function calculateSingleSetDuration(config: Partial<WorkoutConfig>): number {
+  const { exerciseTime, restTime, rounds } = normalizeWorkoutConfig(config)
+
+  return Math.max(0, (exerciseTime + restTime) * rounds)
+}
+
 export function buildWorkoutSequence(config: Partial<WorkoutConfig>): TimerStep[] {
-  const { workTime, restTime, rounds, setRest, totalSets } = normalizeWorkoutConfig(config)
+  const {
+    warmupTime,
+    exerciseTime,
+    restTime,
+    rounds,
+    setRest,
+    totalSets,
+    cooldownTime,
+  } = normalizeWorkoutConfig(config)
   const sequence: TimerStep[] = []
+
+  if (warmupTime > 0) {
+    sequence.push({
+      key: PHASES.WARMUP,
+      label: PHASE_LABELS[PHASES.WARMUP],
+      duration: warmupTime,
+      currentSet: 1,
+      currentRound: 1,
+    })
+  }
 
   for (let currentSet = 1; currentSet <= totalSets; currentSet += 1) {
     for (let currentRound = 1; currentRound <= rounds; currentRound += 1) {
@@ -80,9 +122,9 @@ export function buildWorkoutSequence(config: Partial<WorkoutConfig>): TimerStep[
       const isFinalSet = currentSet === totalSets
 
       sequence.push({
-        key: PHASES.WORK,
-        label: PHASE_LABELS[PHASES.WORK],
-        duration: workTime,
+        key: PHASES.EXERCISE,
+        label: PHASE_LABELS[PHASES.EXERCISE],
+        duration: exerciseTime,
         currentSet,
         currentRound,
       })
@@ -105,6 +147,16 @@ export function buildWorkoutSequence(config: Partial<WorkoutConfig>): TimerStep[
         })
       }
     }
+  }
+
+  if (cooldownTime > 0) {
+    sequence.push({
+      key: PHASES.COOLDOWN,
+      label: PHASE_LABELS[PHASES.COOLDOWN],
+      duration: cooldownTime,
+      currentSet: totalSets,
+      currentRound: rounds,
+    })
   }
 
   sequence.push({

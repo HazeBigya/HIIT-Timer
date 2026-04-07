@@ -2,8 +2,9 @@ import { ChevronDown, LockKeyhole, Save } from 'lucide-react'
 import { memo, useEffect, useState } from 'react'
 import type { ChangeEvent } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import type { Routine, WorkoutConfig } from '../../types'
+import type { Database, Routine, WorkoutConfig } from '../../types'
 import { supabase } from '../../lib/supabase'
+import { normalizeWorkoutConfig } from '../../utils/timeHelpers'
 import GlassButton from '../ui/GlassButton'
 import GlassCard from '../ui/GlassCard'
 import GlassInput from '../ui/GlassInput'
@@ -69,15 +70,17 @@ function RoutineSelector({ session, settings, onLoadSettings }: RoutineSelectorP
     }
 
     const nextName = routineName.trim() || `Workout ${new Date().toLocaleDateString()}`
+    const payload: Database['public']['Tables']['routines']['Insert'] = {
+      user_id: session.user.id,
+      name: nextName,
+      ...settings,
+    }
+
     setIsSaving(true)
 
     const { data, error } = await supabase
       .from('routines')
-      .insert({
-        user_id: session.user.id,
-        name: nextName,
-        ...settings,
-      })
+      .insert(payload as never)
       .select('*')
       .single()
 
@@ -88,10 +91,17 @@ function RoutineSelector({ session, settings, onLoadSettings }: RoutineSelectorP
       return
     }
 
-    setSavedRoutines((current) => [data, ...current])
-    setSelectedRoutineId(data.id)
-    setRoutineName(data.name)
-    setStatusMessage(`Saved “${data.name}”.`)
+    const savedRoutine = data as Routine | null
+
+    if (!savedRoutine) {
+      setStatusMessage('Unable to save the routine right now.')
+      return
+    }
+
+    setSavedRoutines((current) => [savedRoutine, ...current])
+    setSelectedRoutineId(savedRoutine.id)
+    setRoutineName(savedRoutine.name)
+    setStatusMessage(`Saved “${savedRoutine.name}”.`)
   }
 
   const handleLoadRoutine = (event: ChangeEvent<HTMLSelectElement>) => {
@@ -104,13 +114,7 @@ function RoutineSelector({ session, settings, onLoadSettings }: RoutineSelectorP
       return
     }
 
-    onLoadSettings({
-      workTime: nextRoutine.workTime,
-      restTime: nextRoutine.restTime,
-      rounds: nextRoutine.rounds,
-      setRest: nextRoutine.setRest,
-      totalSets: nextRoutine.totalSets,
-    })
+    onLoadSettings(normalizeWorkoutConfig(nextRoutine))
     setRoutineName(nextRoutine.name)
     setStatusMessage(`Loaded “${nextRoutine.name}”.`)
   }
