@@ -1,6 +1,6 @@
 import { memo } from 'react'
 import type { Session } from '@supabase/supabase-js'
-import { LogIn, LogOut, Sparkles } from 'lucide-react'
+import { LogIn, LogOut, Play } from 'lucide-react'
 import GlassButton from '../ui/GlassButton'
 import GlassCard from '../ui/GlassCard'
 
@@ -20,10 +20,14 @@ function Header({ session, authLoading, authMessage, onSignIn, onSignOut }: Head
       <div className="app-header__inner">
         <div className="brand-block">
           <div className="brand-icon" aria-hidden="true">
-            <Sparkles size={18} />
+            <div className="brand-icon__inner">
+              <div className="brand-icon__ring" />
+              <Play size={13} className="brand-icon__play" />
+              <span className="brand-icon__dot" />
+            </div>
           </div>
           <div className="brand-copy">
-            <p className="brand-kicker">Liquid Glass HIIT</p>
+            <p className="brand-kicker">HIIT Interval Training</p>
             <h2 className="brand-title">Train in guest mode or sync with Google.</h2>
           </div>
         </div>

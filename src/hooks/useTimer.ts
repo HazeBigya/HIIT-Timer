@@ -208,6 +208,17 @@ function useTimer(config: WorkoutConfig): TimerHookResult {
     setIsRunning(false)
   }, [clearTimer])
 
+  const skip = useCallback(() => {
+    const activeStep = sequenceRef.current[phaseIndexRef.current] ?? FALLBACK_STEP
+
+    if (activeStep.key === PHASES.FINISHED) {
+      reset()
+      return
+    }
+
+    advancePhase()
+  }, [advancePhase, reset])
+
   useEffect(() => {
     if (!isRunning || currentStep.key === PHASES.FINISHED) {
       countdownCueRef.current = ''
@@ -271,12 +282,15 @@ function useTimer(config: WorkoutConfig): TimerHookResult {
     currentSet: currentStep.currentSet,
     totalTimeRemaining,
     phaseDuration: currentStep.duration,
+    phaseIndex,
+    sequence,
     isRunning,
     isMuted,
     toggleMute,
     play,
     pause,
     reset,
+    skip,
   }
 }
 

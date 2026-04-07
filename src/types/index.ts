@@ -60,9 +60,12 @@ export interface Database {
 export interface TimerHookResult extends TimerState {
   phaseKey: TimerPhaseKey
   phaseDuration: number
+  phaseIndex: number
+  sequence: TimerStep[]
   isMuted: boolean
   toggleMute: () => void
   play: () => void
   pause: () => void
   reset: () => void
+  skip: () => void
 }

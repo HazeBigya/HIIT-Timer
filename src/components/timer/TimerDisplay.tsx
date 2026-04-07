@@ -1,7 +1,8 @@
-import { memo, useMemo } from 'react'
-import { ChevronLeft, Pause, Play, RotateCcw, Volume2, VolumeX } from 'lucide-react'
+import { memo, useEffect, useMemo, useState } from 'react'
+import { ChevronDown, ChevronLeft, Pause, Play, RotateCcw, Volume2, VolumeX } from 'lucide-react'
+import { getRandomCoachTip } from '../../constants/coachTips'
 import { PHASES } from '../../constants/workoutConstants'
-import type { TimerHookResult, TimerPhaseKey, WorkoutConfig } from '../../types'
+import type { TimerHookResult, TimerPhaseKey, TimerStep, WorkoutConfig } from '../../types'
 import { calculateSingleSetDuration, formatSecondsToClock } from '../../utils/timeHelpers'
 
 interface TimerDisplayProps extends TimerHookResult {
@@ -15,55 +16,83 @@ interface TimerDisplayProps extends TimerHookResult {
 const PHASE_TONES: Record<
   TimerPhaseKey,
   {
-    stroke: string
     chip: string
-    glow: string
+    accent: string
     button: string
-    ringFilter: string
+    detail: string
+    tint: string
+    marker: string
   }
 > = {
   warmup: {
-    stroke: '#60a5fa',
-    chip: 'text-sky-200 bg-sky-400/10 border-sky-300/20',
-    glow: 'bg-sky-400/20',
-    button: 'from-sky-500 to-blue-500',
-    ringFilter: 'drop-shadow(0 0 15px rgba(96, 165, 250, 0.5))',
+    chip: 'border-sky-300/25 bg-sky-400/10 text-sky-100',
+    accent: 'text-sky-300',
+    button: 'from-sky-500 via-sky-500 to-blue-500',
+    detail: 'border-sky-400/20 bg-sky-500/10 text-sky-50',
+    tint: '#60a5fa',
+    marker: 'rgba(96, 165, 250, 0.55)',
   },
   exercise: {
-    stroke: '#f87171',
-    chip: 'text-rose-200 bg-rose-400/10 border-rose-300/20',
-    glow: 'bg-rose-400/20',
-    button: 'from-rose-500 to-red-500',
-    ringFilter: 'drop-shadow(0 0 15px rgba(239, 68, 68, 0.5))',
+    chip: 'border-rose-300/25 bg-rose-400/10 text-rose-100',
+    accent: 'text-rose-300',
+    button: 'from-rose-500 via-rose-500 to-red-500',
+    detail: 'border-rose-400/20 bg-rose-500/10 text-rose-50',
+    tint: '#f87171',
+    marker: 'rgba(248, 113, 113, 0.55)',
   },
   rest: {
-    stroke: '#4ade80',
-    chip: 'text-emerald-200 bg-emerald-400/10 border-emerald-300/20',
-    glow: 'bg-emerald-400/20',
-    button: 'from-emerald-500 to-green-500',
-    ringFilter: 'drop-shadow(0 0 15px rgba(34, 197, 94, 0.5))',
+    chip: 'border-emerald-300/25 bg-emerald-400/10 text-emerald-100',
+    accent: 'text-emerald-300',
+    button: 'from-emerald-500 via-emerald-500 to-green-500',
+    detail: 'border-emerald-400/20 bg-emerald-500/10 text-emerald-50',
+    tint: '#4ade80',
+    marker: 'rgba(74, 222, 128, 0.55)',
   },
   'set-rest': {
-    stroke: '#22d3ee',
-    chip: 'text-cyan-100 bg-cyan-400/10 border-cyan-300/20',
-    glow: 'bg-cyan-400/20',
-    button: 'from-cyan-500 to-sky-500',
-    ringFilter: 'drop-shadow(0 0 15px rgba(34, 211, 238, 0.5))',
+    chip: 'border-cyan-300/25 bg-cyan-400/10 text-cyan-100',
+    accent: 'text-cyan-300',
+    button: 'from-cyan-500 via-cyan-500 to-sky-500',
+    detail: 'border-cyan-400/20 bg-cyan-500/10 text-cyan-50',
+    tint: '#22d3ee',
+    marker: 'rgba(34, 211, 238, 0.55)',
   },
   cooldown: {
-    stroke: '#a78bfa',
-    chip: 'text-violet-100 bg-violet-400/10 border-violet-300/20',
-    glow: 'bg-violet-400/20',
-    button: 'from-violet-500 to-indigo-500',
-    ringFilter: 'drop-shadow(0 0 15px rgba(167, 139, 250, 0.5))',
+    chip: 'border-violet-300/25 bg-violet-400/10 text-violet-100',
+    accent: 'text-violet-300',
+    button: 'from-violet-500 via-violet-500 to-indigo-500',
+    detail: 'border-violet-400/20 bg-violet-500/10 text-violet-50',
+    tint: '#a78bfa',
+    marker: 'rgba(167, 139, 250, 0.55)',
   },
   finished: {
-    stroke: '#cbd5e1',
-    chip: 'text-slate-100 bg-slate-400/10 border-slate-300/20',
-    glow: 'bg-slate-300/20',
-    button: 'from-slate-400 to-slate-500',
-    ringFilter: 'drop-shadow(0 0 12px rgba(203, 213, 225, 0.35))',
+    chip: 'border-slate-300/25 bg-slate-400/10 text-slate-100',
+    accent: 'text-slate-100',
+    button: 'from-slate-400 via-slate-400 to-slate-500',
+    detail: 'border-slate-400/20 bg-slate-500/10 text-slate-50',
+    tint: '#cbd5e1',
+    marker: 'rgba(203, 213, 225, 0.4)',
   },
+}
+
+const ACTION_LABELS: Record<TimerPhaseKey, string> = {
+  warmup: 'GET READY',
+  exercise: 'WORK',
+  rest: 'REST',
+  'set-rest': 'SET REST',
+  cooldown: 'COOLDOWN',
+  finished: 'WORKOUT COMPLETE',
+}
+
+function getSegmentStyle(step: TimerStep, index: number, phaseIndex: number) {
+  const tone = PHASE_TONES[step.key]
+  const isCurrent = index === phaseIndex
+  const isPast = index < phaseIndex
+
+  return {
+    background: isCurrent ? tone.tint : isPast ? `${tone.tint}99` : 'rgba(71, 85, 105, 0.45)',
+    boxShadow: isCurrent ? `0 0 0 1px rgba(255,255,255,0.18), 0 0 18px ${tone.marker}` : 'none',
+    opacity: isCurrent || isPast ? 1 : 0.75,
+  }
 }
 
 function TimerDisplay({
@@ -77,158 +106,222 @@ function TimerDisplay({
   exerciseTime,
   restTime,
   totalTimeRemaining,
-  phaseDuration,
+  phaseIndex,
+  sequence,
   isRunning,
   isMuted,
   toggleMute,
   play,
   pause,
   reset,
+  skip,
   onBack,
 }: TimerDisplayProps) {
-  const size = 320
-  const strokeWidth = 12
-  const radius = (size - strokeWidth) / 2
-  const circumference = 2 * Math.PI * radius
+  const [showDetails, setShowDetails] = useState(false)
+  const [coachTip, setCoachTip] = useState<string>(() => getRandomCoachTip())
   const tone = PHASE_TONES[phaseKey]
+
   const singleSetDuration = useMemo(
     () => calculateSingleSetDuration({ exerciseTime, restTime, rounds }),
     [exerciseTime, restTime, rounds],
   )
 
-  const calculateOffset = useMemo(() => {
-    if (phaseKey === PHASES.FINISHED || phaseDuration <= 0) {
-      return circumference
+  const timelineSteps = useMemo(
+    () => sequence.filter((step) => step.key !== PHASES.FINISHED),
+    [sequence],
+  )
+
+  const nextStep = useMemo(() => sequence[phaseIndex + 1] ?? null, [phaseIndex, sequence])
+
+  const setsRemaining = useMemo(() => {
+    if (phaseKey === PHASES.FINISHED) {
+      return 0
     }
 
-    const progressRatio = Math.max(0, Math.min(1, timeLeft / phaseDuration))
-    return circumference * (1 - progressRatio)
-  }, [circumference, phaseDuration, phaseKey, timeLeft])
+    return Math.max(totalSets - currentSet, 0)
+  }, [currentSet, phaseKey, totalSets])
+
+  const primaryActionLabel =
+    phaseKey === PHASES.EXERCISE ? 'Complete Set' : phaseKey === PHASES.FINISHED ? 'Restart Workout' : 'Next Step'
+
+  const estimatedFinish = useMemo(() => {
+    if (totalTimeRemaining <= 0) {
+      return 'Complete'
+    }
+
+    return new Date(Date.now() + totalTimeRemaining * 1000).toLocaleTimeString([], {
+      hour: 'numeric',
+      minute: '2-digit',
+    })
+  }, [totalTimeRemaining])
+
+  useEffect(() => {
+    const rotateTip = () => {
+      setCoachTip((currentTip) => getRandomCoachTip(currentTip))
+    }
+
+    rotateTip()
+    const intervalId = window.setInterval(rotateTip, 10 * 60 * 1000)
+
+    return () => {
+      window.clearInterval(intervalId)
+    }
+  }, [])
 
   return (
-    <section className="flex min-h-[75vh] w-full flex-col items-center justify-center gap-6 bg-gradient-to-br from-slate-900/40 to-slate-950/40 px-4 py-6 text-white">
-      <div className="flex w-full max-w-xl items-center justify-between gap-3">
-        <button
-          type="button"
-          onClick={onBack}
-          aria-label="Back to settings"
-          className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-medium text-white backdrop-blur-md transition hover:bg-white/10"
-        >
-          <ChevronLeft size={18} />
-          <span>Back to Settings</span>
-        </button>
+    <section className="min-h-[78vh] bg-gradient-to-br from-slate-950 via-slate-950 to-slate-900 px-4 py-4 text-white sm:px-5 sm:py-6">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-4">
+        <div className="flex items-center justify-between gap-3">
+          <button
+            type="button"
+            onClick={onBack}
+            aria-label="Back to settings"
+            className="inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/5 px-4 py-2 text-sm font-semibold text-white backdrop-blur-md transition hover:bg-white/10"
+          >
+            <ChevronLeft size={18} />
+            <span>Back to Settings</span>
+          </button>
 
-        <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] backdrop-blur-md ${tone.chip}`}>
-          {currentPhase}
-        </span>
+          <button
+            type="button"
+            onClick={toggleMute}
+            aria-label={isMuted ? 'Unmute sounds' : 'Mute sounds'}
+            aria-pressed={isMuted}
+            className="inline-flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white backdrop-blur-md transition hover:bg-white/10"
+          >
+            {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+          </button>
+        </div>
 
-        <button
-          type="button"
-          onClick={toggleMute}
-          aria-label={isMuted ? 'Unmute sounds' : 'Mute sounds'}
-          aria-pressed={isMuted}
-          className="flex h-11 w-11 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white shadow-[0_10px_30px_rgba(15,23,42,0.2)] backdrop-blur-md transition hover:bg-white/10"
-        >
-          {isMuted ? <VolumeX size={20} /> : <Volume2 size={20} />}
-        </button>
-      </div>
-
-      <div className="relative flex h-[20rem] w-[20rem] items-center justify-center rounded-full border border-white/10 bg-white/5 backdrop-blur-xl sm:h-[26rem] sm:w-[26rem]">
-        <div className={`absolute inset-10 rounded-full ${tone.glow} blur-3xl`} />
-
-        <svg
-          className="absolute inset-0 h-full w-full -rotate-90"
-          viewBox={`0 0 ${size} ${size}`}
-          style={{ filter: tone.ringFilter }}
-        >
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            stroke="rgba(255,255,255,0.10)"
-            strokeWidth={strokeWidth}
-          />
-          <circle
-            cx={size / 2}
-            cy={size / 2}
-            r={radius}
-            fill="none"
-            stroke={tone.stroke}
-            strokeWidth={strokeWidth}
-            strokeLinecap="round"
-            strokeDasharray={circumference}
-            style={{
-              strokeDashoffset: calculateOffset,
-              transition: 'stroke-dashoffset 1s linear',
-            }}
-          />
-        </svg>
-
-        <div className="absolute inset-0 flex flex-col items-center justify-center px-6 text-center">
-          <div className="mb-2 text-[11px] font-semibold uppercase tracking-[0.32em] text-slate-200/80">
-            {phaseKey === PHASES.FINISHED ? 'FINISHED' : currentPhase.toUpperCase()}
+        <div className="rounded-[28px] border border-white/10 bg-slate-950/80 p-4 shadow-[0_24px_80px_rgba(15,23,42,0.45)] backdrop-blur-xl sm:p-6 lg:p-8">
+          <div className="mb-4 flex items-center justify-between gap-3">
+            <span className={`rounded-full border px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.28em] ${tone.chip}`}>
+              {currentPhase}
+            </span>
+            <span className="text-xs font-medium text-slate-300/80">
+              Step {Math.min(phaseIndex + 1, Math.max(timelineSteps.length, 1))} / {Math.max(timelineSteps.length, 1)}
+            </span>
           </div>
-          <div className="text-8xl font-black tabular-nums tracking-tighter text-white">
-            {formatSecondsToClock(timeLeft)}
+
+          <div className="space-y-2">
+            <div className="flex items-center justify-between text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-300/75">
+              <span>Workout Timeline</span>
+              <span>{formatSecondsToClock(totalTimeRemaining)} left</span>
+            </div>
+            <div className="flex items-center gap-2">
+              {timelineSteps.map((step, index) => (
+                <div
+                  key={`${step.key}-${index}`}
+                  className={`h-3 flex-1 rounded-full transition-all duration-300 ${index === phaseIndex ? 'scale-y-125' : ''}`}
+                  style={getSegmentStyle(step, index, phaseIndex)}
+                  aria-hidden="true"
+                />
+              ))}
+            </div>
           </div>
-          <div className="mt-3 text-sm text-slate-200/80">
-            Set {Math.min(Math.max(currentSet, 1), totalSets)}/{totalSets} • Round {Math.min(Math.max(currentRound, 1), rounds)}/{rounds}
+
+          <div className="mt-6 text-center">
+            <p className={`text-sm font-semibold uppercase tracking-[0.32em] ${tone.accent}`}>
+              {ACTION_LABELS[phaseKey]}
+            </p>
+            <div className="mt-4 text-6xl font-black tabular-nums tracking-[-0.06em] text-white sm:text-7xl lg:text-8xl">
+              {formatSecondsToClock(timeLeft)}
+            </div>
+            <p className="mt-3 text-base font-semibold text-white/90 sm:text-lg">
+              Round {Math.min(Math.max(currentRound, 1), rounds)} / {rounds} • Set {Math.min(Math.max(currentSet, 1), totalSets)} / {totalSets}
+            </p>
           </div>
-          <div className="mt-1 text-xs uppercase tracking-[0.2em] text-slate-300/70">
-            Remaining {formatSecondsToClock(totalTimeRemaining)}
+
+          <div className="mt-6 grid gap-3 sm:grid-cols-3">
+            <button
+              type="button"
+              onClick={isRunning ? pause : play}
+              className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-base font-semibold text-white backdrop-blur-md transition hover:bg-white/10"
+            >
+              {isRunning ? <Pause size={20} /> : <Play size={20} className="translate-x-[1px]" />}
+              <span>{isRunning ? 'Pause' : phaseKey === PHASES.FINISHED ? 'Replay' : 'Play'}</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={reset}
+              className="inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl border border-white/10 bg-white/5 px-4 py-3 text-base font-semibold text-white backdrop-blur-md transition hover:bg-white/10"
+            >
+              <RotateCcw size={20} />
+              <span>Reset Workout</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={phaseKey === PHASES.FINISHED ? reset : skip}
+              className={`inline-flex min-h-14 items-center justify-center gap-2 rounded-2xl bg-gradient-to-r ${tone.button} px-4 py-3 text-base font-semibold text-white shadow-[0_16px_40px_rgba(59,130,246,0.25)] transition hover:scale-[1.01]`}
+            >
+              <span>{primaryActionLabel}</span>
+            </button>
           </div>
         </div>
-      </div>
 
-      <div className="grid w-full max-w-md grid-cols-2 gap-3 rounded-[24px] border border-white/10 bg-white/5 p-3 text-white backdrop-blur-md">
-        <div className="rounded-2xl bg-slate-950/30 px-4 py-3">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-slate-300/80">
-            Single Set Duration
-          </div>
-          <div className="mt-1 text-lg font-semibold tabular-nums text-white">
-            {formatSecondsToClock(singleSetDuration)}
+        <div className="rounded-[24px] border border-white/10 bg-white/5 p-3 backdrop-blur-md sm:p-4">
+          <button
+            type="button"
+            onClick={() => setShowDetails((current) => !current)}
+            className="flex w-full items-center justify-between gap-3 rounded-2xl px-1 py-1 text-left text-white"
+            aria-expanded={showDetails}
+          >
+            <div>
+              <p className="text-sm font-semibold text-white">More Details</p>
+              <p className="text-xs text-slate-300/80">Progress, up next, splits, and coaching cues</p>
+            </div>
+            <ChevronDown
+              size={20}
+              className={`transition-transform duration-300 ${showDetails ? 'rotate-180' : ''}`}
+            />
+          </button>
+
+          <div
+            className={`grid transition-all duration-300 ease-out ${showDetails ? 'mt-4 grid-rows-[1fr] opacity-100' : 'grid-rows-[0fr] opacity-0'}`}
+          >
+            <div className="overflow-hidden">
+              <div className="grid gap-3 sm:grid-cols-2">
+                <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-slate-300/75">Progress</p>
+                  <p className="mt-2 text-lg font-semibold text-white">Rounds: {Math.min(Math.max(currentRound, 1), rounds)} / {rounds}</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-slate-300/75">Sets Remaining</p>
+                  <p className="mt-2 text-lg font-semibold text-white">{setsRemaining}</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-slate-300/75">Up Next</p>
+                  <p className="mt-2 text-lg font-semibold text-white">
+                    {nextStep && nextStep.key !== PHASES.FINISHED ? ACTION_LABELS[nextStep.key] : 'Workout Complete'}
+                  </p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-slate-300/75">Est. Finish</p>
+                  <p className="mt-2 text-lg font-semibold text-white">{estimatedFinish}</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-slate-300/75">Exercise Time</p>
+                  <p className="mt-2 text-lg font-semibold text-white">{formatSecondsToClock(exerciseTime)}</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-slate-300/75">Rest Time</p>
+                  <p className="mt-2 text-lg font-semibold text-white">{formatSecondsToClock(restTime)}</p>
+                </div>
+                <div className="rounded-2xl border border-white/10 bg-slate-950/40 p-4 sm:col-span-2">
+                  <p className="text-[10px] uppercase tracking-[0.24em] text-slate-300/75">Single Set Duration</p>
+                  <p className="mt-2 text-lg font-semibold text-white">{formatSecondsToClock(singleSetDuration)}</p>
+                </div>
+              </div>
+
+              <div className={`mt-3 rounded-2xl border p-4 ${tone.detail}`}>
+                <p className="text-[10px] font-semibold uppercase tracking-[0.24em] text-white/75">Coach's Tips</p>
+                <p className="mt-2 text-sm leading-6 text-white/90">{coachTip}</p>
+              </div>
+            </div>
           </div>
         </div>
-        <div className="rounded-2xl bg-slate-950/30 px-4 py-3">
-          <div className="text-[10px] uppercase tracking-[0.22em] text-slate-300/80">
-            Total Remaining
-          </div>
-          <div className="mt-1 text-lg font-semibold tabular-nums text-white">
-            {formatSecondsToClock(totalTimeRemaining)}
-          </div>
-        </div>
-      </div>
-
-      <div className="flex w-full max-w-md items-center justify-center gap-4 sm:gap-6">
-        <button
-          type="button"
-          onClick={reset}
-          aria-label="Reset workout"
-          className="flex h-16 w-16 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white shadow-[0_10px_30px_rgba(15,23,42,0.2)] backdrop-blur-md transition hover:bg-white/10 sm:h-20 sm:w-20"
-        >
-          <RotateCcw size={30} />
-        </button>
-
-        <button
-          type="button"
-          onClick={pause}
-          disabled={!isRunning}
-          aria-label="Pause workout"
-          className="flex h-16 w-16 items-center justify-center rounded-full border border-white/10 bg-white/5 text-white shadow-[0_10px_30px_rgba(15,23,42,0.2)] backdrop-blur-md transition hover:bg-white/10 disabled:cursor-not-allowed disabled:opacity-40 sm:h-20 sm:w-20"
-        >
-          <Pause size={34} />
-        </button>
-
-        <button
-          type="button"
-          onClick={play}
-          disabled={isRunning}
-          aria-label={phaseKey === PHASES.FINISHED ? 'Restart workout' : 'Play workout'}
-          className={`flex h-16 w-16 items-center justify-center rounded-full bg-gradient-to-r ${tone.button} text-white shadow-[0_16px_40px_rgba(59,130,246,0.3)] transition hover:scale-[1.02] disabled:cursor-not-allowed disabled:opacity-50 sm:h-20 sm:w-20`}
-        >
-          <Play size={34} className="translate-x-[2px]" />
-        </button>
       </div>
     </section>
   )

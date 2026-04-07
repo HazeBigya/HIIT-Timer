@@ -40,9 +40,51 @@
   width: rem(42);
   height: rem(42);
   border-radius: rem(14);
-  color: #050505;
-  background: linear-gradient(135deg, #ffffff 0%, #8bdcff 48%, #c4b5fd 100%);
+  background: linear-gradient(135deg, #0f172a 0%, #020617 100%);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   box-shadow: $shadow-soft;
+}
+
+.brand-icon__inner {
+  position: relative;
+  width: rem(26);
+  height: rem(26);
+}
+
+.brand-icon__ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 999px;
+  border: rem(3) solid rgba(255, 255, 255, 0.14);
+
+  &::after {
+    content: '';
+    position: absolute;
+    inset: rem(-3);
+    border-radius: inherit;
+    border: rem(3) solid transparent;
+    border-top-color: #38bdf8;
+    border-right-color: #8b5cf6;
+    border-bottom-color: #f43f5e;
+    filter: drop-shadow(0 0 rem(8) rgba(139, 92, 246, 0.35));
+  }
+}
+
+.brand-icon__play {
+  position: absolute;
+  inset: 50% auto auto 50%;
+  color: #f8fafc;
+  transform: translate(-38%, -50%);
+}
+
+.brand-icon__dot {
+  position: absolute;
+  top: rem(1);
+  left: rem(1);
+  width: rem(5);
+  height: rem(5);
+  border-radius: 999px;
+  background: #38bdf8;
 }
 
 .brand-kicker {

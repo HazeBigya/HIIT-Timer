@@ -18,13 +18,13 @@ const SETTINGS_FIELDS: Array<{
   min: number
   step: number
 }> = [
-  { name: 'warmupTime', label: 'Warmup Time', min: 0, step: 5 },
-  { name: 'exerciseTime', label: 'Exercise Time', min: 1, step: 5 },
-  { name: 'restTime', label: 'Rest Time', min: 0, step: 5 },
+  { name: 'warmupTime', label: 'Warmup Time (secs)', min: 0, step: 5 },
+  { name: 'exerciseTime', label: 'Exercise Time (secs)', min: 1, step: 5 },
+  { name: 'restTime', label: 'Rest Time (secs)', min: 0, step: 5 },
   { name: 'rounds', label: 'Rounds', min: 1, step: 1 },
-  { name: 'setRest', label: 'Set Rest', min: 0, step: 5 },
+  { name: 'setRest', label: 'Set Rest (secs)', min: 0, step: 5 },
   { name: 'totalSets', label: 'Total Sets', min: 1, step: 1 },
-  { name: 'cooldownTime', label: 'Cooldown Time', min: 0, step: 5 },
+  { name: 'cooldownTime', label: 'Cooldown Time (secs)', min: 0, step: 5 },
 ]
 
 type RoutineRow = {
@@ -306,8 +306,8 @@ function SettingsPanel({
 
   return (
     <section className="mx-auto w-full max-w-5xl rounded-[32px] border border-white/10 bg-gradient-to-br from-slate-900/70 to-slate-950/60 px-4 py-5 text-white shadow-[0_24px_80px_rgba(15,23,42,0.35)] backdrop-blur-md md:px-6 md:py-6">
-      <div className="grid gap-6 lg:grid-cols-[1.08fr_0.92fr]">
-        <div className="space-y-5">
+      <div className="grid items-stretch gap-6 lg:grid-cols-[1.08fr_0.92fr]">
+        <div className="flex h-full flex-col space-y-5">
           <div className="mb-6 inline-flex items-center gap-2 rounded-full border border-white/10 bg-white/10 px-3 py-1 text-[11px] font-semibold uppercase tracking-[0.24em] text-slate-200">
             <span className="h-2 w-2 rounded-full bg-cyan-300 shadow-[0_0_12px_rgba(125,211,252,0.9)]" />
             Workout settings
@@ -346,7 +346,7 @@ function SettingsPanel({
           </div>
         </div>
 
-        <div className="space-y-4">
+        <div className="flex h-full flex-col space-y-4">
           <div className="rounded-[28px] border border-white/10 bg-white/5 p-4 backdrop-blur-md md:p-5">
             <div>
               <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-slate-300">
@@ -359,13 +359,13 @@ function SettingsPanel({
 
             <div className="mt-4 space-y-3 rounded-2xl border border-white/10 bg-slate-950/30 p-4 text-sm text-slate-200">
               <div className="flex items-center justify-between gap-3">
-                <span className="text-slate-300/80">Warmup • Cooldown</span>
+                <span className="text-slate-300/80">Warmup Time (secs) • Cooldown Time (secs)</span>
                 <strong className="tabular-nums text-white">
                   {settings.warmupTime}s • {settings.cooldownTime}s
                 </strong>
               </div>
               <div className="flex items-center justify-between gap-3">
-                <span className="text-slate-300/80">Exercise • Rest</span>
+                <span className="text-slate-300/80">Exercise Time (secs) • Rest Time (secs)</span>
                 <strong className="tabular-nums text-white">
                   {settings.exerciseTime}s / {settings.restTime}s
                 </strong>
@@ -383,9 +383,29 @@ function SettingsPanel({
                 </strong>
               </div>
               <div className="flex items-center justify-between gap-3">
-                <span className="text-slate-300/80">Set Rest</span>
+                <span className="text-slate-300/80">Set Rest (secs)</span>
                 <strong className="tabular-nums text-white">{settings.setRest}s</strong>
               </div>
+            </div>
+
+            <div className="mt-4 rounded-[24px] border border-white/10 bg-white/5 p-4 backdrop-blur-md">
+              <p className="text-[11px] font-medium uppercase tracking-[0.2em] text-slate-300">
+                Session Tips
+              </p>
+              <ul className="mt-3 space-y-2 text-sm leading-6 text-slate-200">
+                <li className="flex gap-2">
+                  <span className="mt-2 h-1.5 w-1.5 rounded-full bg-cyan-300" />
+                  <span>Set Rest provides a distinct recovery period between full series of rounds.</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="mt-2 h-1.5 w-1.5 rounded-full bg-cyan-300" />
+                  <span>Modify any setting to see dynamic updates to your Total Time.</span>
+                </li>
+                <li className="flex gap-2">
+                  <span className="mt-2 h-1.5 w-1.5 rounded-full bg-cyan-300" />
+                  <span>Save your unique configuration for future quick access.</span>
+                </li>
+              </ul>
             </div>
 
             <div className="mt-4 space-y-3">
